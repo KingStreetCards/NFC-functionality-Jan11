@@ -17,28 +17,50 @@ export default async function handler(req, res) {
     }
 
     try {
-        const response = await fetch(
-            `https://api.psacard.com/publicapi/cert/GetByCertNumber/${certNumber}`,
-            {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/json'
-                }
+        // Use node-fetch style with proper headers
+        const url = `https://api.psacard.com/publicapi/cert/GetByCertNumber/${certNumber}`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.psacard.com/',
+                'Origin': 'https://www.psacard.com'
             }
-        );
+        });
 
-        if (!response.ok) {
-            throw new Error(`PSA API returned ${response.status}`);
+        const text = await response.text();
+        
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Failed to parse response:', text);
+            return res.status(500).json({ 
+                error: 'Invalid response from PSA',
+                details: 'Response was not valid JSON',
+                raw: text.substring(0, 200)
+            });
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+            return res.status(response.status).json({ 
+                error: `PSA API returned ${response.status}`,
+                data: data
+            });
+        }
+
         return res.status(200).json(data);
         
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Proxy Error:', error);
         return res.status(500).json({ 
             error: 'Failed to fetch PSA data',
-            details: error.message 
+            details: error.message,
+            stack: error.stack
         });
     }
 }
